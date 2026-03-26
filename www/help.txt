@@ -1,0 +1,58 @@
+SSE Server 接口说明
+=====================
+
+基础地址 base_url: http://localhost:3000
+
+
+【SSE 订阅】
+-----------
+GET /sse/:channel
+
+说明: 订阅指定频道，连接建立后立即收到该频道最新数据
+
+示例:
+  curl -N /sse/news
+
+返回:
+  event: message
+  data: {...最新数据...}
+
+  event: connected
+  data: {"channel":"news","connectionId":"xxx"}
+
+  event: ping  (每30秒心跳)
+
+
+【API 接口】
+-----------
+1. 发布消息
+   POST /api/publish
+   Body: {"channel":"频道名","event":"事件名","data":{}}
+
+   示例:
+     curl -X POST /api/publish \
+       -H "Content-Type: application/json" \
+       -d '{"channel":"news","data":{"title":"Hello"}}'
+
+2. 列出频道
+   GET /api/channels
+
+3. 删除频道
+   DELETE /api/channels/:name
+
+4. 获取统计
+   GET /api/stats
+
+
+【JavaScript 示例】
+------------------
+// 订阅
+const es = new EventSource('/sse/news');
+es.onmessage = e => console.log(JSON.parse(e.data));
+
+// 发布
+fetch('/api/publish', {
+  method: 'POST',
+  headers: {'Content-Type':'application/json'},
+  body: JSON.stringify({channel:'news', data:{msg:'Hello'}})
+});
