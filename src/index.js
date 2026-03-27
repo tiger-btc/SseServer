@@ -4,6 +4,7 @@ const path = require('path')
 const { SSEManager } = require('./sse/manager')
 const { createSSERoutes } = require('./routes/sse')
 const { createAPIRoutes } = require('./routes/api')
+const { accessLogger } = require('./logger')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -24,6 +25,7 @@ const corsOptions = {
 app.disable('x-powered-by')
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
+app.use(accessLogger)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 

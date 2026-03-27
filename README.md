@@ -28,6 +28,16 @@ npm start
 
 访问 `http://localhost:3000` 可查看 Web 测试页面。
 
+### 日志
+
+访问日志默认写入 `logs/access-YYYY-MM-DD.log`，可通过环境变量配置：
+
+- `LOG_DIR`：日志目录
+- `ACCESS_LOG_FILE`：日志文件名基准
+- `LOG_LEVEL`：日志级别
+
+字段包含：`method`、`path`、`status`、`durationMs`、`ip`、`userAgent`
+
 ---
 
 ## API 文档
