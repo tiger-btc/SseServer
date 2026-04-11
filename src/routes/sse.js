@@ -11,6 +11,13 @@ function createSSERoutes(sseManager) {
     res.setHeader('Cache-Control', 'no-cache, no-transform')
     res.setHeader('Connection', 'keep-alive')
     res.setHeader('X-Accel-Buffering', 'no')
+    if (req.socket) {
+      req.socket.setNoDelay(true)
+      req.socket.setKeepAlive(true)
+    }
+    if (typeof res.flushHeaders === 'function') {
+      res.flushHeaders()
+    }
 
     const connection = new SSEConnection(channel, res)
     const sseChannel = sseManager.createOrGetChannel(channel)
@@ -18,15 +25,7 @@ function createSSERoutes(sseManager) {
 
     connection.send('connected', { channel, connectionId: connection.id })
 
-    const heartbeat = setInterval(() => {
-      if (!connection.send('ping', { timestamp: Date.now() })) {
-        clearInterval(heartbeat)
-        connection.close()
-      }
-    }, 30000)
-
     req.on('close', () => {
-      clearInterval(heartbeat)
       connection.close()
     })
   })

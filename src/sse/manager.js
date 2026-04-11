@@ -2,6 +2,11 @@ const EventEmitter = require('events')
 const crypto = require('crypto')
 
 const CHANNEL_CLEANUP_DELAY = 60 * 60 * 1000
+const HEARTBEAT_INTERVAL = 30000
+
+function formatSSEMessage(event, data) {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+}
 
 class SSEConnection extends EventEmitter {
   constructor(channel, res) {
@@ -13,8 +18,11 @@ class SSEConnection extends EventEmitter {
   }
 
   send(event, data) {
+    return this.sendRaw(formatSSEMessage(event, data))
+  }
+
+  sendRaw(payload) {
     if (!this.isAlive) return false
-    const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
     return this.res.write(payload)
   }
 
@@ -33,7 +41,9 @@ class SSEChannel extends EventEmitter {
     this.connections = new Map()
     this.latestData = null
     this.latestEvent = 'message'
+    this.latestPayload = null
     this.cleanupTimer = null
+    this.heartbeatTimer = null
   }
 
   startCleanupTimer(timeout, onCleanup) {
@@ -54,16 +64,23 @@ class SSEChannel extends EventEmitter {
 
   addConnection(connection) {
     this.clearCleanupTimer()
+    if (this.connections.size === 0) {
+      this.startHeartbeat()
+    }
     this.connections.set(connection.id, connection)
     connection.on('close', () => this.removeConnection(connection.id))
-    if (this.latestData !== null) {
-      connection.send(this.latestEvent, this.latestData)
+    if (this.latestPayload !== null) {
+      connection.sendRaw(this.latestPayload)
     }
   }
 
   removeConnection(id) {
-    this.connections.delete(id)
+    if (!this.connections.delete(id)) {
+      return
+    }
+
     if (this.connections.size === 0) {
+      this.stopHeartbeat()
       this.emit('empty')
     }
   }
@@ -71,14 +88,42 @@ class SSEChannel extends EventEmitter {
   broadcast(event, data) {
     this.latestData = data
     this.latestEvent = event
+    this.latestPayload = formatSSEMessage(event, data)
+    return this.broadcastRaw(this.latestPayload)
+  }
+
+  broadcastVolatile(event, data) {
+    return this.broadcastRaw(formatSSEMessage(event, data))
+  }
+
+  broadcastRaw(payload) {
     const deadConnections = []
     for (const conn of this.connections.values()) {
-      if (!conn.send(event, data)) {
+      if (!conn.sendRaw(payload)) {
         deadConnections.push(conn.id)
       }
     }
     for (const id of deadConnections) {
       this.removeConnection(id)
+    }
+    return this.connections.size
+  }
+
+  startHeartbeat() {
+    if (this.heartbeatTimer) {
+      return
+    }
+
+    this.heartbeatTimer = setInterval(() => {
+      this.broadcastVolatile('ping', { timestamp: Date.now() })
+    }, HEARTBEAT_INTERVAL)
+    this.heartbeatTimer.unref()
+  }
+
+  stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer)
+      this.heartbeatTimer = null
     }
   }
 
@@ -117,6 +162,7 @@ class SSEManager extends EventEmitter {
     const channel = this.channels.get(name)
     if (channel) {
       channel.clearCleanupTimer()
+      channel.stopHeartbeat()
       for (const conn of channel.connections.values()) {
         conn.close()
       }
@@ -142,4 +188,4 @@ class SSEManager extends EventEmitter {
   }
 }
 
-module.exports = { SSEManager, SSEChannel, SSEConnection }
+module.exports = { SSEManager, SSEChannel, SSEConnection, formatSSEMessage }
