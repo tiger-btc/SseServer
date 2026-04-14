@@ -7,6 +7,7 @@ const LOG_DIR = process.env.LOG_DIR || path.join(__dirname, '../logs')
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info'
 const ACCESS_LOG_FILE = process.env.ACCESS_LOG_FILE || 'access.log'
 const ACCESS_LOG_PATH = path.join(LOG_DIR, ACCESS_LOG_FILE)
+const SSE_MESSAGE_LOGGING = process.env.SSE_MESSAGE_LOGGING === 'true'
 
 if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true })
@@ -53,6 +54,10 @@ function accessLogger(req, res, next) {
 }
 
 function logSSEEvent(event, details) {
+  if (event === 'message.published' && !SSE_MESSAGE_LOGGING) {
+    return
+  }
+
   logger.info({
     type: 'sse',
     event,
@@ -60,4 +65,4 @@ function logSSEEvent(event, details) {
   })
 }
 
-module.exports = { logger, accessLogger, logSSEEvent, LOG_DIR, ACCESS_LOG_PATH }
+module.exports = { logger, accessLogger, logSSEEvent, LOG_DIR, ACCESS_LOG_PATH, SSE_MESSAGE_LOGGING }

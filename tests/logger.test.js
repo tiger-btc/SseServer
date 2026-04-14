@@ -29,10 +29,11 @@ describe('accessLogger', () => {
   })
 
   test('should create log directory and expose middleware', () => {
-    const { accessLogger, logSSEEvent, LOG_DIR } = require('../src/logger')
+    const { accessLogger, logSSEEvent, LOG_DIR, SSE_MESSAGE_LOGGING } = require('../src/logger')
     expect(LOG_DIR).toBe(logsDir)
     expect(typeof accessLogger).toBe('function')
     expect(typeof logSSEEvent).toBe('function')
+    expect(SSE_MESSAGE_LOGGING).toBe(false)
     expect(fs.existsSync(logsDir)).toBe(true)
   })
 
@@ -79,5 +80,16 @@ describe('accessLogger', () => {
       channel: 'news',
       connectionId: 'abc',
     })
+  })
+
+  test('should skip message publish logs by default', () => {
+    const { logger, logSSEEvent } = require('../src/logger')
+
+    logSSEEvent('message.published', {
+      channel: 'news',
+      recipients: 1,
+    })
+
+    expect(logger.info).not.toHaveBeenCalled()
   })
 })
