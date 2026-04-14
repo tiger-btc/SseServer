@@ -22,6 +22,16 @@ describe('SSEConnection', () => {
     const result = conn.send('message', { text: 'hello' })
     expect(result).toBe(false)
   })
+
+  test('should treat write backpressure as a live connection', () => {
+    const mockRes = { write: jest.fn().mockReturnValue(false) }
+    const conn = new SSEConnection('test', mockRes)
+
+    const result = conn.send('message', { text: 'hello' })
+
+    expect(result).toBe(true)
+    expect(conn.isAlive).toBe(true)
+  })
 })
 
 describe('SSEChannel', () => {
@@ -92,6 +102,33 @@ describe('SSEChannel', () => {
     channel.addConnection(new SSEConnection('test', lateRes))
 
     expect(lateRes.write).toHaveBeenCalledWith(formatSSEMessage('message', { text: 'hello' }))
+  })
+
+  test('should keep connection when write returns false', () => {
+    const channel = new SSEChannel('test')
+    const slowRes = { write: jest.fn().mockReturnValue(false) }
+
+    channel.addConnection(new SSEConnection('test', slowRes))
+    const recipients = channel.broadcast('message', { text: 'hello' })
+
+    expect(recipients).toBe(1)
+    expect(channel.getConnectionCount()).toBe(1)
+  })
+
+  test('should remove connection when write throws', () => {
+    const channel = new SSEChannel('test')
+    const brokenRes = {
+      write: jest.fn(() => {
+        throw new Error('socket closed')
+      }),
+      end: jest.fn(),
+    }
+
+    channel.addConnection(new SSEConnection('test', brokenRes))
+    const recipients = channel.broadcast('message', { text: 'hello' })
+
+    expect(recipients).toBe(0)
+    expect(channel.getConnectionCount()).toBe(0)
   })
 })
 

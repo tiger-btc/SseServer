@@ -15,6 +15,11 @@ class SSEConnection extends EventEmitter {
     this.channel = channel
     this.res = res
     this.isAlive = true
+
+    if (typeof this.res.on === 'function') {
+      this.res.on('close', () => this.close())
+      this.res.on('error', () => this.close())
+    }
   }
 
   send(event, data) {
@@ -23,7 +28,18 @@ class SSEConnection extends EventEmitter {
 
   sendRaw(payload) {
     if (!this.isAlive) return false
-    return this.res.write(payload)
+    if (this.res.destroyed || this.res.writableEnded) {
+      this.close()
+      return false
+    }
+
+    try {
+      this.res.write(payload)
+      return true
+    } catch {
+      this.close()
+      return false
+    }
   }
 
   close() {
