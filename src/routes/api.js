@@ -1,4 +1,5 @@
 const express = require('express')
+const { logSSEEvent } = require('../logger')
 
 function createAPIRoutes(sseManager) {
   const router = express.Router()
@@ -38,6 +39,11 @@ function createAPIRoutes(sseManager) {
     }
 
     const recipients = sseChannel.broadcast(event, data)
+    logSSEEvent('message.published', {
+      channel,
+      event,
+      recipients,
+    })
     res.json({ success: true, recipients })
   })
 

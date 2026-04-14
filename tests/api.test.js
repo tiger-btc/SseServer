@@ -1,5 +1,10 @@
+jest.mock('../src/logger', () => ({
+  logSSEEvent: jest.fn(),
+}))
+
 const { createAPIRoutes } = require('../src/routes/api')
 const { SSEManager, SSEConnection } = require('../src/sse/manager')
+const { logSSEEvent } = require('../src/logger')
 
 function getRouteHandler(router, method, path) {
   const layer = router.stack.find((entry) => entry.route && entry.route.path === path && entry.route.methods[method])
@@ -84,5 +89,10 @@ describe('API routes', () => {
     expect(res.body).toEqual({ success: true, recipients: 1 })
     expect(mockRes.write).toHaveBeenCalled()
     expect(manager.listChannels()).toHaveLength(1)
+    expect(logSSEEvent).toHaveBeenCalledWith('message.published', {
+      channel: 'news',
+      event: 'message',
+      recipients: 1,
+    })
   })
 })

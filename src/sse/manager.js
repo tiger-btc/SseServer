@@ -1,5 +1,6 @@
 const EventEmitter = require('events')
 const crypto = require('crypto')
+const { logSSEEvent } = require('../logger')
 
 const CHANNEL_CLEANUP_DELAY = 60 * 60 * 1000
 const HEARTBEAT_INTERVAL = 30000
@@ -46,6 +47,10 @@ class SSEConnection extends EventEmitter {
     if (!this.isAlive) return
     this.isAlive = false
     this.res.end()
+    logSSEEvent('connection.closed', {
+      channel: this.channel,
+      connectionId: this.id,
+    })
     this.emit('close')
   }
 }

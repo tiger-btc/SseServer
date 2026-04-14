@@ -1,5 +1,6 @@
 const express = require('express')
 const { SSEConnection } = require('../sse/manager')
+const { logSSEEvent } = require('../logger')
 
 function createSSERoutes(sseManager) {
   const router = express.Router()
@@ -22,6 +23,13 @@ function createSSERoutes(sseManager) {
     const connection = new SSEConnection(channel, res)
     const sseChannel = sseManager.createOrGetChannel(channel)
     sseChannel.addConnection(connection)
+    logSSEEvent('connection.opened', {
+      channel,
+      connectionId: connection.id,
+      connections: sseChannel.getConnectionCount(),
+      ip: req.ip || req.socket?.remoteAddress || '',
+      userAgent: req.get('user-agent') || '',
+    })
 
     connection.send('connected', { channel, connectionId: connection.id })
 

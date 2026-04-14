@@ -19,6 +19,7 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   transports: [
+    new winston.transports.Console(),
     new DailyRotateFile({
       dirname: LOG_DIR,
       filename: ACCESS_LOG_FILE.replace(/\.log$/, '') + '-%DATE%.log',
@@ -51,4 +52,12 @@ function accessLogger(req, res, next) {
   next()
 }
 
-module.exports = { logger, accessLogger, LOG_DIR, ACCESS_LOG_PATH }
+function logSSEEvent(event, details) {
+  logger.info({
+    type: 'sse',
+    event,
+    ...details,
+  })
+}
+
+module.exports = { logger, accessLogger, logSSEEvent, LOG_DIR, ACCESS_LOG_PATH }

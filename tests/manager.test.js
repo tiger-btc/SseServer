@@ -1,4 +1,9 @@
+jest.mock('../src/logger', () => ({
+  logSSEEvent: jest.fn(),
+}))
+
 const { SSEManager, SSEChannel, SSEConnection, formatSSEMessage } = require('../src/sse/manager')
+const { logSSEEvent } = require('../src/logger')
 
 describe('SSEConnection', () => {
   test('should create connection with unique id', () => {
@@ -21,6 +26,18 @@ describe('SSEConnection', () => {
     conn.close()
     const result = conn.send('message', { text: 'hello' })
     expect(result).toBe(false)
+  })
+
+  test('should log when connection closes', () => {
+    const mockRes = { write: jest.fn(), end: jest.fn() }
+    const conn = new SSEConnection('test', mockRes)
+
+    conn.close()
+
+    expect(logSSEEvent).toHaveBeenCalledWith('connection.closed', expect.objectContaining({
+      channel: 'test',
+      connectionId: conn.id,
+    }))
   })
 
   test('should treat write backpressure as a live connection', () => {

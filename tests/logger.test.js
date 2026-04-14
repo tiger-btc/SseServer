@@ -29,9 +29,10 @@ describe('accessLogger', () => {
   })
 
   test('should create log directory and expose middleware', () => {
-    const { accessLogger, LOG_DIR } = require('../src/logger')
+    const { accessLogger, logSSEEvent, LOG_DIR } = require('../src/logger')
     expect(LOG_DIR).toBe(logsDir)
     expect(typeof accessLogger).toBe('function')
+    expect(typeof logSSEEvent).toBe('function')
     expect(fs.existsSync(logsDir)).toBe(true)
   })
 
@@ -62,5 +63,21 @@ describe('accessLogger', () => {
       ip: '127.0.0.1',
       userAgent: 'test-agent',
     }))
+  })
+
+  test('should log structured sse events', () => {
+    const { logger, logSSEEvent } = require('../src/logger')
+
+    logSSEEvent('connection.opened', {
+      channel: 'news',
+      connectionId: 'abc',
+    })
+
+    expect(logger.info).toHaveBeenCalledWith({
+      type: 'sse',
+      event: 'connection.opened',
+      channel: 'news',
+      connectionId: 'abc',
+    })
   })
 })
